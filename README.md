@@ -40,17 +40,12 @@ The workflow is designed to integrate with an Obsidian vault and minimize fricti
    pip install moviepy inquirer pyyaml obs-cli
    ```
 
-4. Install obs-cli:
-   ```bash
-   # Follow installation instructions at https://github.com/obsproject/obs-cli
-   ```
-
-5. Make the bash script executable:
+4. Make the bash script executable:
    ```bash
    chmod +x run_capture.sh
    ```
 
-6. Configure OBS:
+5. Configure OBS:
    - Create a scene for portfolio captures
    - Set up your recording output path (default: ~/Videos)
    - Configure hotkeys if desired
