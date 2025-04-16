@@ -37,7 +37,7 @@ The workflow is designed to integrate with an Obsidian vault and minimize fricti
 
 3. Install required Python packages:
    ```bash
-   pip install moviepy inquirer pyyaml
+   pip install moviepy inquirer pyyaml obs-cli
    ```
 
 4. Install obs-cli:
