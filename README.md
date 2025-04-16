@@ -1,4 +1,4 @@
-# README: Portfolio Reel Generator Workflow
+# Portfolio Reel Generator
 
 ## Overview
 
