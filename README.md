@@ -2,12 +2,12 @@
 
 ## Overview
 
-This system provides a streamlined workflow for creating professional portfolio reels from your work. It consists of two main components:
+This system provides a streamlined workflow for creating professional portfolio reels from day-to-day work. It consists of two main components:
 
 1. **Clip Capture Tool**: Records video clips of your work and generates metadata files
-2. **Reel Generator**: Compiles your clips into a professional reel with text overlays and transitions
+2. **Reel Generator**: Compiles your clips into a reel with text overlays and transitions
 
-The workflow is designed to integrate with your Obsidian vault and minimize friction in the portfolio creation process.
+The workflow is designed to integrate with an Obsidian vault and minimize friction in the portfolio creation process.
 
 ## Setup
 
