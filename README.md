@@ -92,12 +92,12 @@ text_bg_color: "rgba(0,0,0,0.5)"
 fade_duration: 0.7
 
 # Intro/Outro
-intro_text: "LUFS Audio\nSound Design Portfolio\n2025"
+intro_text: "NAME\nSound Design Portfolio\nYYYY"
 intro_duration: 5
 intro_fontsize: 60
 intro_bg_color: "black"
 
-outro_text: "Contact: your@email.com\nwww.lufsaudio.com"
+outro_text: "Contact: your@email.com\nwww.yourwebsite.com"
 outro_duration: 7
 outro_fontsize: 50
 outro_bg_color: "black"
@@ -107,7 +107,7 @@ background_music: "assets/reel_background.mp3"
 background_volume: 0.15
 
 # Output settings
-output_filename: "LUFS_Audio_SoundDesign_2025.mp4"
+output_filename: "reel_name_SoundDesign_YYYY.mp4"
 fps: 30
 video_codec: "libx264"
 audio_codec: "aac"
@@ -155,15 +155,15 @@ When you're ready to create your reel:
    - Add background music if provided
    - Export the final reel
 
-### 5. Integration with Kando Pie Menu
+### 5. Integration with [Kando Pie Menu](https://kando.menu/)
+
+Quickly capture portfolio clips with a few clicks
 
 To integrate with Kando:
 
 1. Add a new action to your Kando pie menu
 2. Set the action to run: `/path/to/run_capture.sh`
 3. Assign an icon and label (e.g., "Capture Portfolio Clip")
-
-Now you can quickly capture portfolio clips with just a few clicks!
 
 ## Advanced Usage
 
@@ -198,7 +198,7 @@ Change the output filename and location:
 ## Troubleshooting
 
 - **OBS Not Starting**: Ensure OBS is installed and in your PATH
-- **Missing Dependencies**: Run `pip install moviepy inquirer pyyaml` to install required packages
+- **Missing Dependencies**: Run `pip install moviepy inquirer pyyaml obs-cli` to install required packages
 - **Recording Issues**: Check OBS settings and ensure you have write permissions to the output directory
 - **YAML Errors**: Ensure your YAML files are properly formatted
 - **Video Processing Errors**: Check that MoviePy can process your video format
