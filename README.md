@@ -1,232 +1,165 @@
-# Portfolio Reel Generator
+# reels — a screen-capture & reel primitive
 
-## Overview
+`reels` is a LUFS-family primitive for turning day-to-day work into portfolio
+reels. It ships two *documents* — a **Capture Document** (`capture.json`) and a
+**Reel Document** (`reel.json`) — plus two *contracts* over them
+(`reels verify`, `reels prove`), so an agent can capture, assemble, and prove
+a reel **headlessly** with explicit exit codes and never a silent "exit 0 but
+wrong".
 
-This system provides a streamlined workflow for creating professional portfolio reels from day-to-day work. It consists of two main components:
+The primitive is the two documents plus the two contracts. Every consumer (a
+CLI today, a PWA/editor later) reads the documents and never re-implements them.
+The only runtime dependency shared everywhere is **ffmpeg** (+ `ffprobe`) —
+no OBS, no obs-cli, no MoviePy.
 
-1. **Clip Capture Tool**: Records video clips of your work and generates metadata files
-2. **Reel Generator**: Compiles your clips into a reel with text overlays and transitions
+## Install
 
-The workflow is designed to integrate with an Obsidian vault and minimize friction in the portfolio creation process.
-
-## Setup
-
-### Prerequisites
-
-- Python 3.7+
-- OBS Studio
-- obs-cli (for controlling OBS programmatically)
-- MoviePy and other Python dependencies
-
-### Installation
-
-1. Create a directory structure in your Obsidian vault:
-   ```
-   obsidian-vault/
-   ├── reel/
-   │   ├── sound-design/
-   │   │   ├── 2025/
-   │   ├── composition/
-   │   ├── implementation/
-   ```
-
-2. Copy the scripts to a convenient location:
-   - `create_reel.py`: The main reel generator script
-   - `capture_portfolio_clip.py`: The clip capture script
-   - `run_capture.sh`: The bash script to run the capture tool
-
-3. Install required dependencies with [uv](https://docs.astral.sh/uv/):
-   ```bash
-   uv sync
-   ```
-
-4. Make the bash script executable:
-   ```bash
-   chmod +x run_capture.sh
-   ```
-
-5. Configure OBS:
-   - Create a scene for portfolio captures
-   - Set up your recording output path (default: ~/Videos)
-   - Configure hotkeys if desired
-
-## Step-by-Step Guide
-
-### 1. Capturing Portfolio Clips
-
-When you create something you want to include in your portfolio:
-
-1. Run the capture script:
-   ```bash
-   ./run_capture.sh
-   ```
-
-2. Enter the project details when prompted:
-   - Project title
-   - Client name
-   - Your role (defaults to "Sound Designer")
-   - Reel category (sound-design, composition, implementation)
-
-3. The script will start OBS recording. Do your demonstration, then press Enter to stop recording.
-
-4. The script will:
-   - Save the recording to the appropriate directory
-   - Generate a YAML metadata file
-   - Assign the next available order number
-
-### 2. Creating Configuration Files (Optional)
-
-For each reel type, you can create a `config.yaml` file with global settings:
-
-```yaml
-# Visual settings
-font: "Arial"
-fontsize: 30
-text_color: "white"
-text_bg_color: "rgba(0,0,0,0.5)"
-fade_duration: 0.7
-
-# Intro/Outro
-intro_text: "NAME\nSound Design Portfolio\nYYYY"
-intro_duration: 5
-intro_fontsize: 60
-intro_bg_color: "black"
-
-outro_text: "Contact: your@email.com\nwww.yourwebsite.com"
-outro_duration: 7
-outro_fontsize: 50
-outro_bg_color: "black"
-
-# Audio settings
-background_music: "assets/reel_background.mp3"
-background_volume: 0.15
-
-# Output settings
-output_filename: "reel_name_SoundDesign_YYYY.mp4"
-fps: 30
-video_codec: "libx264"
-audio_codec: "aac"
+```bash
+uv sync            # Python >=3.12, uv-managed
+uv run reels --version
 ```
 
-Place this file in the reel directory (e.g., `reel/sound-design/2025/config.yaml`).
-
-### 3. Editing Project Metadata
-
-You can manually edit the YAML files to adjust:
-- Start/end times for trimming
-- Project details
-- Order of appearance in the reel
-
-Example YAML file (`reel/sound-design/2025/1.yaml`):
-```yaml
-title: "Ambient Sound Design for VR Experience"
-role: "Sound Designer"
-client: "Metaverse Studios"
-year: 2025
-order: 1
-start: 10
-end: 40
-fade_duration: 0.5
-```
-
-### 4. Generating Reels
-
-When you're ready to create your reel:
-
-1. Run the reel generator script:
-   ```bash
-   python create_reel.py sound-design 2025
-   ```
-
-2. Optional arguments:
-   - `--background` or `-b`: Path to background music
-   - `--output` or `-o`: Custom output directory
-   - `--config` or `-c`: Path to custom config file
-
-3. The script will:
-   - Process all clips in the specified directory
-   - Apply text overlays and transitions
-   - Add intro/outro if specified
-   - Add background music if provided
-   - Export the final reel
-
-### 5. Integration with [Kando Pie Menu](https://kando.menu/)
-
-Quickly capture portfolio clips with a few clicks
-
-To integrate with Kando:
-
-1. Add a new action to your Kando pie menu
-2. Set the action to run: `/path/to/run_capture.sh`
-3. Assign an icon and label (e.g., "Capture Portfolio Clip")
-
-## Advanced Usage
-
-### Custom Ordering
-
-The `order` field in each YAML file determines the sequence of clips in the reel. Lower numbers appear first.
-
-### Multiple Reel Types
-
-You can maintain different types of reels (sound-design, composition, implementation) with separate configurations.
-
-### Background Music
-
-Add background music to your reel by:
-1. Specifying it in the config file: `background_music: "path/to/music.mp3"`
-2. Passing it as an argument: `python create_reel.py sound-design 2025 -b path/to/music.mp3`
-
-### Custom Output
-
-Change the output filename and location:
-1. In config: `output_filename: "MyCustomReel.mp4"`
-2. Command line: `python create_reel.py sound-design 2025 -o /path/to/output`
-
-## Workflow Tips
-
-1. **Capture as You Go**: Record portfolio clips right after completing significant work while it's still fresh
-2. **Consistent Naming**: Use descriptive project titles that will make sense in your reel
-3. **Regular Updates**: Regenerate your reels quarterly to keep them current
-4. **Backup**: Ensure your reel directory is backed up with your Obsidian vault
-5. **Review and Refine**: Periodically review your clips and adjust trimming as needed
-
-## Troubleshooting
-
-- **OBS Not Starting**: Ensure OBS is installed and in your PATH
-- **Missing Dependencies**: Run `uv sync` in the repo root to install required packages
-- **Recording Issues**: Check OBS settings and ensure you have write permissions to the output directory
-- **YAML Errors**: Ensure your YAML files are properly formatted
-- **Video Processing Errors**: Check that MoviePy can process your video format
-
-## File Structure
+## Command surface
 
 ```
-obsidian-vault/
-├── reel/
-│   ├── sound-design/
-│   │   ├── 2025/
-│   │   │   ├── 1.mp4
-│   │   │   ├── 1.yaml
-│   │   │   ├── 2.mp4
-│   │   │   ├── 2.yaml
-│   │   │   ├── config.yaml
-│   │   │   └── sound-design_reel_2025.mp4
-│   ├── composition/
-│   │   ├── 2025/
-│   │   │   └── ...
-│   ├── implementation/
-│   │   ├── 2025/
-│   │   │   └── ...
-├── scripts/
-│   ├── create_reel.py
-│   ├── capture_portfolio_clip.py
-│   └── run_capture.sh
+reels <command> [options] [--json]
+  capture   Record a screen/window shot        -> media + capture.json
+  verify    Contract one against a capture     (is the capture whole?)
+  edit      Author a reel.json from captures   (order, trims, overlays, intro/outro/music)
+  prove     Contract two against an assembly   (did it behave as asked?)
+  render    ffmpeg render a reel.json          -> output file
+  list      Inventory captures/reels under a root
+  id        Deterministic content identity     (reel-<hex>)
 ```
 
-## Customization
+Design rules: strong defaults, `--json` on every command, `--dry-run` for
+pre-flight, NDJSON progress on capture/render, and a documented exit-code
+taxonomy. No interactive prompts.
 
-Feel free to modify the scripts to better suit your workflow. Some ideas:
-- Add more metadata fields to your YAML files
-- Create custom text overlay styles
-- Implement different transition types
-- Add watermarks or logos to your reels
+### Exit-code taxonomy
+
+| Code | Meaning |
+|---|---|
+| 0 | success (captured+verified / proved / rendered) |
+| 2 | usage / bad args |
+| 3 | capture source (region/device) unavailable |
+| 4 | required binary missing (ffmpeg / ffprobe / capture tool) |
+| 5 | contract **violated** |
+| 6 | interrupted before a valid output |
+| 7 | contract **unverifiable** (not failed — couldn't evaluate) |
+| 70 | not implemented (honest-failure sentinel) |
+
+## The two documents
+
+### Capture Document — `capture.json` (one per recorded shot)
+
+Normalised, typed, machine-readable statement of what a capture *is*:
+provenance (`source.platform/tool/region`), what was *requested* (`fps`,
+`codec`, `audio`, `mic`), what was *captured* (geometry, duration, frames,
+integrated LUFS / peak dBFS), the media `file` and its `content_sha256`, and a
+`verification` block (verdict + checks).
+
+### Reel Document — `reel.json` (the timeline / assembly manifest)
+
+The output block, `style`, `intro`/`outro`, `music`, and an ordered list of
+trimmed `clips` with optional overlays — each `capture_ref` pointing at a
+verified capture. See [`examples/reel.json`](examples/reel.json).
+
+## The two contracts — three verdicts
+
+Both contracts are **pure functions of their inputs** (no IO in the contract
+body; a thin runner gathers facts). Each gating check is tri-state, and the
+third state is the point:
+
+```
+verified      all gating checks passed            -> exit 0
+violated      at least one gating check failed    -> exit 5
+unverifiable  a gating check could not be evaluated -> exit 7
+```
+
+Two-state tools fold "I couldn't check" into one of the others and lie.
+`reels` reports it honestly. Every check carries declared truncation
+(`findings { total, shown, truncated }`).
+
+### Contract one — `reels verify` (is the capture whole?)
+
+Gating: `parses_clean`, `media_decodes`, `has_audio`, `min_duration`,
+`uniform_geometry`, `not_blank`, `trims_in_bounds`.
+
+Advisory (never move the verdict): `audio_lufs_in_range`, `codec_uniform`,
+`no_static_frames`.
+
+### Contract two — `reels prove` (did the assembly behave as asked?)
+
+Metamorphic — no golden output to diff, so it asserts *relations*: 
+`durations_sum`, `concat_continuous`, `fps_constant`, `overlay_fits`,
+`audio_end_to_end`, `music_ducked`, `dimensions_match`,
+`intro_outro_ordered`, `deterministic` (same `reel.json` + inputs ⇒
+byte-identical render).
+
+## End-to-end quickstart
+
+```bash
+# 1. capture a shot (headless; SIGINT stops it, leaving a partial + unverifiable doc)
+reels capture --out ./shots --name demo --region monitor:0 --audio --json
+
+# 2. prove the take is whole before using it
+reels verify ./shots --json            # exit 0 (verified)
+
+# 3. author a reel from verified captures
+reels edit --add rec-……06 --order 1 --add rec-……2a --order 2 \
+      --captures ./shots --out reel.json
+
+# 4. prove the assembly behaves as asked (re-renders for determinism)
+reels prove reel.json --captures ./shots --json      # exit 0 (verified)
+
+# 5. render the final video
+reels render reel.json --captures ./shots --out PortfolioDemo.mp4
+```
+
+## Platforms
+
+ffmpeg is the single cross-platform engine with thin per-platform capture
+adapters:
+
+| Platform | Adapter |
+|---|---|
+| Linux X11 | `ffmpeg -f x11grab` |
+| Linux Wayland (wlroots / Hyprland / Omarchy) | `wl-screenrec` (preferred) or `wf-recorder` |
+| macOS | `ffmpeg -f avfoundation` |
+| Windows | `ffmpeg -f gdigrab` |
+
+Rendering is a pure-ffmpeg `filter_complex` build — trims, fades, `drawtext`
+overlays, intro/outro, ordered concat, and background-music **ducking**
+(`sidechaincompress`) that never replaces clip audio.
+
+## Repository layout
+
+```
+src/reels/
+  cli.py            command dispatcher (--json / --dry-run / exit taxonomy)
+  errors.py         exit-code taxonomy
+  identify.py       deterministic content identity (reel-<hex>)
+  capture_doc.py    Capture Document schema + parser
+  reel_doc.py       Reel Document schema + parser
+  adapters/         platform capture adapters (x11 / wayland / mac / win)
+  capture.py        headless capture -> media + capture.json
+  media.py          ffprobe/ffmpeg facts runner (LUFS, decode, geometry)
+  contracts/
+    verify.py       Contract one (gating) + verify CLI
+    prove.py        Contract two (metamorphic) + prove CLI
+  render.py         pure-ffmpeg renderer
+tests/              per-unit test suites
+docs/SPEC.md        the specification
+docs/units/         unit-of-work contracts
+docs/legacy-migration.md   old OBS/MoviePy -> reels mapping
+examples/reel.json  sample reel document
+```
+
+## Spec & philosophy
+
+- [`docs/SPEC.md`](docs/SPEC.md) — the full specification and command surface.
+- [`docs/units/`](docs/units/) — unit-of-work contracts a fresh agent can build
+  from with no other context.
+- KB doctrine this replicates: one parser, two contracts, three verdicts,
+  declared truncation, deterministic identity — "proven, not exited 0".
