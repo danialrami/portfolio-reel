@@ -161,15 +161,17 @@ def build_filter_graph(
 
     # music ducking: compress the music (main) with clip audio as the
     # sidechain, then mix the (unattenuated) speech back with the ducked music.
-    # Music is trimmed to the expected reel length so the streams align.
+    # Music is trimmed to the expected reel length; speech is asplit so it can
+    # feed both the sidechain and the final mix (a label is consumed once).
     expected_total = sum(clip_durations) + (reel.intro.duration if intro_on else 0.0) \
         + (reel.outro.duration if outro_on else 0.0)
     if music_path and music_has_audio and audio_pads:
         parts.append(
             f"[{music_idx}:a]atrim=end={round(max(expected_total, 0.1), 3)},asetpts=PTS-STARTPTS[a_mus];"
-            "[a_mus][aout]sidechaincompress="
+            "[aout]asplit=2[sp1][sp2];"
+            "[a_mus][sp1]sidechaincompress="
             "threshold=0.05:ratio=8:attack=50:release=500[ducked];"
-            f"[ducked][aout]amix=inputs=2:duration=first:normalize=0:dropout_transition=2:"
+            f"[ducked][sp2]amix=inputs=2:duration=first:normalize=0:dropout_transition=2:"
             f"weights='{reel.music.volume} 1'[aoutmix]"
         )
 
