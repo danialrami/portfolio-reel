@@ -149,6 +149,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_ed.add_argument("--trim-in", dest="trim_in", type=float, default=None)
     p_ed.add_argument("--trim-out", dest="trim_out", type=float, default=None)
     p_ed.add_argument("--overlay-text", dest="overlay_text", default=None)
+    p_ed.add_argument("--captures", default=".", help="root dir to resolve capture documents from")
     p_ed.add_argument("--out", default="reel.json")
     p_ed.add_argument("--dry-run", action="store_true")
     _json(p_ed)
@@ -208,3 +209,14 @@ def main(argv: Optional[list[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+# --------------------------------------------------------------------------
+# Real command bodies (later units) wire themselves in on import. Unimplemented
+# commands are not registered here, so they fall back to the exit-70 stub.
+# --------------------------------------------------------------------------
+
+def _load_command_bodies() -> None:
+    from . import edit  # noqa: F401  (registers capture/verify/edit/prove/render handlers)
+
+_load_command_bodies()
