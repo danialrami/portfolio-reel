@@ -1,17 +1,26 @@
 [project]
-name = "portfolio-reel"
+name = "reels"
 version = "0.1.0"
-description = "Capture portfolio clips and compile demo reels"
+description = "A LUFS-family screen-capture & reel primitive: capture documents, reel documents, and the two contracts (verify / prove) over them."
 requires-python = ">=3.12"
-dependencies = [
-    "inquirer>=3.1",
-    "moviepy>=2.1",
-    "pyyaml>=6.0",
-]
+dependencies = []
+
+[project.scripts]
+reels = "reels.cli:main"
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
-packages = []
+package-dir = { "" = "src" }
+packages = ["reels"]
+
+[tool.setuptools.package-data]
+reels = ["py.typed"]
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
