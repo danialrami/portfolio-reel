@@ -31,13 +31,13 @@ The workflow is designed to integrate with an Obsidian vault and minimize fricti
    ```
 
 2. Copy the scripts to a convenient location:
-   - `create-reel.py`: The main reel generator script
-   - `capture-portfolio-clip.py`: The clip capture script
-   - `run-capture.sh`: The bash script to run the capture tool
+   - `create_reel.py`: The main reel generator script
+   - `capture_portfolio_clip.py`: The clip capture script
+   - `run_capture.sh`: The bash script to run the capture tool
 
-3. Install required Python packages:
+3. Install required dependencies with [uv](https://docs.astral.sh/uv/):
    ```bash
-   pip install moviepy inquirer pyyaml obs-cli
+   uv sync
    ```
 
 4. Make the bash script executable:
@@ -193,7 +193,7 @@ Change the output filename and location:
 ## Troubleshooting
 
 - **OBS Not Starting**: Ensure OBS is installed and in your PATH
-- **Missing Dependencies**: Run `pip install moviepy inquirer pyyaml obs-cli` to install required packages
+- **Missing Dependencies**: Run `uv sync` in the repo root to install required packages
 - **Recording Issues**: Check OBS settings and ensure you have write permissions to the output directory
 - **YAML Errors**: Ensure your YAML files are properly formatted
 - **Video Processing Errors**: Check that MoviePy can process your video format
