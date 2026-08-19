@@ -1,0 +1,17 @@
+# uv / Python
+.venv/
+__pycache__/
+*.egg-info/
+*.pyc
+
+# Environment
+.env
+
+# Rendered reels / captures (build artifacts)
+reel/
+*.mp4
+*.mov
+*.mkv
+
+# Editor
+.DS_Store

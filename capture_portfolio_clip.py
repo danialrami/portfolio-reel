@@ -2,6 +2,7 @@
 
 import subprocess
 import os
+import shutil
 import yaml
 import datetime
 from pathlib import Path
@@ -73,7 +74,7 @@ def capture_portfolio_clip():
         
         # Copy video file
         video_path = reel_dir / f"{next_order}.mp4"
-        subprocess.run(["cp", str(latest_recording), str(video_path)])
+        shutil.copy2(str(latest_recording), str(video_path))
         
         print(f"Clip and metadata saved to {reel_dir}")
         print(f"YAML: {yaml_path}")

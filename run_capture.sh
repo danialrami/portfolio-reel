@@ -3,10 +3,10 @@
 # Portfolio Clip Capture Script
 # This script runs the Python capture script and ensures proper YAML generation
 
-# Define paths
+set -euo pipefail
+
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PYTHON_SCRIPT="$SCRIPT_DIR/capture_portfolio_clip.py"
-VENV_PATH="$SCRIPT_DIR/.venv"  # Optional: path to virtual environment if you use one
 
 # Check if the Python script exists
 if [ ! -f "$PYTHON_SCRIPT" ]; then
@@ -15,7 +15,7 @@ if [ ! -f "$PYTHON_SCRIPT" ]; then
     exit 1
 fi
 
-# Check if OBS is running
+# Check if OBS is running; start it if not
 if ! pgrep -x "obs" > /dev/null; then
     echo "Warning: OBS doesn't appear to be running. Starting OBS..."
     obs --minimize-to-tray &
@@ -29,17 +29,16 @@ if ! command -v obs-cli &> /dev/null; then
     exit 1
 fi
 
-# Check for required Python packages
-echo "Checking dependencies..."
-python3 -c "import inquirer, yaml" 2>/dev/null
-if [ $? -ne 0 ]; then
-    echo "Installing required Python packages..."
-    pip install inquirer pyyaml
-fi
+# Ensure the uv environment with dependencies is ready
+echo "Checking dependencies (uv)..."
+uv run --project "$SCRIPT_DIR" python -c "import inquirer, yaml" 2>/dev/null || {
+    echo "Installing dependencies with uv..."
+    uv sync --project "$SCRIPT_DIR"
+}
 
 # Run the Python script
 echo "Starting portfolio clip capture..."
-python3 "$PYTHON_SCRIPT"
+uv run --project "$SCRIPT_DIR" python "$PYTHON_SCRIPT"
 
 # Check if the script executed successfully
 if [ $? -eq 0 ]; then
