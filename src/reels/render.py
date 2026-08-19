@@ -237,7 +237,14 @@ def _build_args(reel: Reel, clip_paths: list[Path], music_path: Path | None,
 def render(reel_path: Path, out: Path, dry_run: bool = False,
            captures_root: Path | None = None) -> int:
     reel = load_reel(reel_path)
-    clip_paths = resolve_clip_media(reel_path, reel, captures_root)
+    try:
+        clip_paths = resolve_clip_media(reel_path, reel, captures_root)
+    except Exit:
+        if dry_run:
+            # dry-run only needs to show the graph/command, not real media
+            clip_paths = [Path("clip.mp4") for _ in reel.clips]
+        else:
+            raise
     ordered = sorted(reel.clips, key=lambda c: c.order)
     clip_durations = []
     for c, p in zip(ordered, clip_paths):
@@ -247,6 +254,8 @@ def render(reel_path: Path, out: Path, dry_run: bool = False,
             # trim_out unset (0) -> use the clip's real duration
             clip_durations.append(max(0.0, _media_duration(p) - c.trim_in))
     has_audio = [_stream_has_audio(p) for p in clip_paths]
+    if not clip_paths or clip_paths[0].name == "clip.mp4":
+        has_audio = [True] * len(clip_paths)  # best-effort graph for dry-run
 
     music_path = Path(reel.music.file) if reel.music.file else None
     music_has_audio = bool(music_path and music_path.exists() and _stream_has_audio(music_path))

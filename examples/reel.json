@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "reel_id": "reel-1c2f9e4d",
+  "output": {
+    "filename": "PortfolioDemo.mp4",
+    "fps": 30,
+    "video_codec": "libx264",
+    "audio_codec": "aac",
+    "size": "1920x1080"
+  },
+  "style": {
+    "font": "DejaVu-Sans-Bold",
+    "overlay_bg": "rgba(0,0,0,0.5)",
+    "fade_duration": 0.5
+  },
+  "intro": {
+    "text": "Avery Stone\nSound Design Portfolio\n2026",
+    "duration": 5
+  },
+  "outro": {
+    "text": "Contact: avery@lufs.audio\nwww.averystone.audio",
+    "duration": 7
+  },
+  "music": {
+    "file": "assets/reel_background.m4a",
+    "volume": 0.15,
+    "duck_under_speech": true
+  },
+  "clips": [
+    {
+      "capture_ref": "rec-9f3ab21c",
+      "trim_in": 10,
+      "trim_out": 40,
+      "order": 1,
+      "overlay": {
+        "text": "Ambient VR Soundscape\nSound Designer\nMetaverse Studios — 2026",
+        "position": "bottom-left"
+      }
+    },
+    {
+      "capture_ref": "rec-7d21e0aa",
+      "trim_in": 5,
+      "trim_out": 33,
+      "order": 2,
+      "overlay": {
+        "text": "UI Implementation\nAudio Programmer\nNorthwind Games — 2025",
+        "position": "bottom-left"
+      }
+    }
+  ],
+  "verification": {
+    "verdict": "unverifiable",
+    "checks": []
+  }
+}
