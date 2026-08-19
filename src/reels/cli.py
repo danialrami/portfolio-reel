@@ -157,6 +157,7 @@ def _build_parser() -> argparse.ArgumentParser:
     # prove
     p_pr = sub.add_parser("prove", help="contract two: did the assembly behave as asked?")
     p_pr.add_argument("reel", help="path to reel.json")
+    p_pr.add_argument("--captures", default=".", help="root dir to resolve capture media from")
     p_pr.add_argument("--json", action="store_true")
     p_pr.add_argument("--dry-run", action="store_true", help="skip the deterministic render")
 
@@ -221,6 +222,7 @@ def _load_command_bodies() -> None:
     from . import capture  # noqa: F401  (capture)
     from . import edit  # noqa: F401  (edit)
     from . import render  # noqa: F401  (render)
+    from .contracts import prove  # noqa: F401  (prove)
     from .contracts import verify  # noqa: F401  (verify)
 
 _load_command_bodies()

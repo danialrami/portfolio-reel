@@ -161,11 +161,15 @@ def build_filter_graph(
 
     # music ducking: compress the music (main) with clip audio as the
     # sidechain, then mix the (unattenuated) speech back with the ducked music.
+    # Music is trimmed to the expected reel length so the streams align.
+    expected_total = sum(clip_durations) + (reel.intro.duration if intro_on else 0.0) \
+        + (reel.outro.duration if outro_on else 0.0)
     if music_path and music_has_audio and audio_pads:
         parts.append(
-            f"[{music_idx}:a][aout]sidechaincompress="
+            f"[{music_idx}:a]atrim=end={round(max(expected_total, 0.1), 3)},asetpts=PTS-STARTPTS[a_mus];"
+            "[a_mus][aout]sidechaincompress="
             "threshold=0.05:ratio=8:attack=50:release=500[ducked];"
-            f"[ducked][aout]amix=inputs=2:duration=first:dropout_transition=2:"
+            f"[ducked][aout]amix=inputs=2:duration=first:normalize=0:dropout_transition=2:"
             f"weights='{reel.music.volume} 1'[aoutmix]"
         )
 
@@ -223,7 +227,10 @@ def _build_args(reel: Reel, clip_paths: list[Path], music_path: Path | None,
              "-pix_fmt", "yuv420p"]
     if final_audio:
         args += ["-c:a", reel.output.audio_codec]
-    args += ["-shortest", str(out)]
+    # strip timestamps/metadata and force bit-exactness so equal inputs
+    # -> byte-identical renders (determinism is a Contract-two relation)
+    args += ["-fflags", "+bitexact", "-flags:v", "+bitexact", "-flags:a", "+bitexact",
+             "-map_metadata", "-1", str(out)]
     return args
 
 

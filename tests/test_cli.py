@@ -56,10 +56,12 @@ def test_unknown_command_exits_2(capsys):
     assert exc.value.code == ExitCodes.USAGE
 
 
-def test_stub_commands_exit_70():
-    # prove/render are still stubs until Units 06/07
-    for cmd in (["prove", "x.json"], ["render", "x.json"]):
-        assert main(cmd) == ExitCodes.NOT_IMPLEMENTED, cmd
+def test_all_commands_registered_and_stub_sentinel_defined():
+    # every SPEC subcommand now has a real body wired in via register()
+    from reels.cli import _HANDLERS
+    for cmd in ("capture", "verify", "edit", "prove", "render", "list", "id"):
+        assert cmd in _HANDLERS, cmd
+    assert ExitCodes.NOT_IMPLEMENTED == 70  # honest-failure sentinel still available
 
 
 def test_exit_exception_carries_code():
