@@ -1,0 +1,30 @@
+# reels — agent entrypoint
+
+`reels` is a Python 3.12+, uv-managed, ffmpeg-backed video-process primitive. Phases 0 and 1 are video-only.
+
+## Read first
+
+- `AGENTS.md` — operating rules, command contract, extension seams
+- `README.md` — human quickstart
+- `docs/PHASES.md` — recording/editing phases and deferred audio boundary
+- `docs/SPEC.md` — full document and verifier specification
+
+## Machine-readable contracts
+
+- `schemas/capture/capture-v1.json` — Recording Document (`capture.json`)
+- `schemas/reel/reel-v1.json` — Editing Document (`reel.json`)
+- `agent.json` — command and capability manifest
+
+## Implementation map
+
+- `src/reels/capture_doc.py` and `src/reels/reel_doc.py` — parsers and serializers
+- `src/reels/contracts/verify.py` — recording gate
+- `src/reels/contracts/prove.py` — editing/assembly metamorphic contract
+- `src/reels/media.py` — ffprobe/ffmpeg facts, including video mean luma
+- `src/reels/adapters/` — platform recording adapters
+- `src/reels/render.py` — ffmpeg video renderer
+- `tests/` — contract and integration tests
+
+## Runtime rule
+
+Run `uv sync` and `uv run reels ...`. Use `--json` for agent consumption. A process exit of 0 is not enough: inspect the persisted `verified` verdict. `unverifiable` is a distinct failure-to-prove state. Audio capture, LUFS/peak measurement, and music ducking are deferred and must not be enabled implicitly.

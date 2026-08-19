@@ -83,7 +83,11 @@ def detect(env=None, which=None) -> Adapter:
             tool = "wf-recorder"
         else:
             tool = "wl-screenrec"  # preferred; command builds regardless
-        return Adapter("wayland", tool, _build_wayland)
+        return Adapter(
+            "wayland",
+            tool,
+            lambda req, selected_tool=tool: _build_wayland(req, selected_tool),
+        )
 
     if env.get("DISPLAY"):
         return Adapter("x11", "ffmpeg:x11grab", _build_x11)
@@ -121,11 +125,11 @@ def _build_x11(req: CaptureRequest) -> list[str]:
     return cmd
 
 
-def _build_wayland(req: CaptureRequest) -> list[str]:
+def _build_wayland(req: CaptureRequest, tool: str = "wl-screenrec") -> list[str]:
     geom, mode = _geometry(req.region)
-    if req.audio or req.mic:
-        # wl-screenrec/wf-recorder record desktop audio on request
-        pass
+    # Audio capture is deliberately deferred. Keep the request fields in the
+    # document shape for a later audio phase, but never silently add an audio
+    # stream to a phase-0/1 recording.
     if geom:
         args = ["--geometry", geom]
     elif mode == "window":
@@ -133,15 +137,18 @@ def _build_wayland(req: CaptureRequest) -> list[str]:
     else:  # monitor:N
         n = mode.split(":")[1]
         args = ["--monitor", n]
-    args += ["--fps", str(req.fps), "--audio", "--output-file", _media_path(req)]
+    args += ["--fps", str(req.fps), "--output-file", _media_path(req)]
     if req.duration:
         args += ["--duration", str(req.duration)]
-    return ["wl-screenrec", *args]
+    return [tool, *args]
 
 
 def _build_mac(req: CaptureRequest) -> list[str]:
     geom, mode = _geometry(req.region)
-    aud = "1" if (req.audio or req.mic) else "none"
+    # Audio input selection is reserved for the later audio phase. `none`
+    # makes the current recording contract video-only even if a caller passes
+    # the future CaptureRequest fields programmatically.
+    aud = "none"
     device = f"{mode.split(':')[1] if mode else '0'}:{aud}"
     cmd = ["ffmpeg", "-y", "-f", "avfoundation", "-framerate", str(req.fps),
            "-i", device]

@@ -1,8 +1,9 @@
 # Unit 05 — Reel Document & `reels edit`
 
 ## Objective
-Define the normalized `reel.json` (timeline/assembly manifest) and a headless `reels edit` that
-authors one from verified captures — ordering, trims, overlay text, intro/outro, music.
+Define the normalized `reel.json` Editing Document and a headless `reels edit` that authors one
+from verified recordings — ordering, trims, overlay text, and intro/outro. Music remains an empty,
+explicitly deferred extension in phases 0/1.
 
 ## Context
 - `docs/SPEC.md` — the Reel Document shape (output, style, intro/outro, music, clips[]).
@@ -23,12 +24,13 @@ authors one from verified captures — ordering, trims, overlay text, intro/outr
 - `src/reels/reel_doc.py` → `class Reel` (+ `parse_reel(text)`, `load_reel(path)`,
   `save_reel(path, r)`, `validate(r) -> list[str]`).
 - `src/reels/edit.py` → `author(clips: list[ClipRef], opts) -> Reel` (sorts by `order`, resolves
-  `capture_ref`, applies trims/overlays, attaches intro/outro/music).
+  `capture_ref`, applies trims/overlays, attaches intro/outro; audio/music fields stay at their
+  deferred defaults).
 - `ClipRef = { capture_ref, trim_in, trim_out, order, overlay: {text, position} }`.
 
 ## Boundaries — do NOT touch
 - Do not validate assembly relations (Unit 06) or render (Unit 07).
-- Do not invent a new schema — everything derives from `docs/SPEC.md`.
+- Keep the Editing Document aligned with `schemas/reel/reel-v1.json`; parser and schema changes ship together.
 
 ## Output
 `src/reels/reel_doc.py`, `src/reels/edit.py`, `tests/test_reel_doc.py`. Commit:

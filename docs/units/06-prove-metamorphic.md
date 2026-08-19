@@ -8,13 +8,13 @@ reel — with the same three-verdict and declared-truncation discipline as Unit 
 ## Context
 - `docs/SPEC.md` — Contract two table (`durations_sum`, `concat_continuous`, `fps_constant`,
   `overlay_fits`, `audio_end_to_end`, `music_ducked`, `dimensions_match`, `intro_outro_ordered`,
-  `deterministic`).
+  `deterministic`). Audio relations are dormant/pass-through in the video-only phases.
 - `docs/units/04-verify-gating.md` — same verdict/truncation machinery; reuse patterns and
   `reels/media.py` (read-only).
 - KB: metamorphic contract rationale in `verifier-philosophy/04-metamorphic-value.md`.
 
 ## Acceptance criteria
-- [ ] `reels prove reel.json --json` returns `verified` (exit 0) for a well-formed assembly.
+- [ ] `reels prove reel.json --json` returns `verified` (exit 0) for a well-formed video-only assembly.
 - [ ] Detects and reports as `violated` (exit 5): clip durations not summing to total, a gap/jump
       at a boundary, non-uniform fps/size, an overlay overflowing the frame, intro/outro out of
       order.

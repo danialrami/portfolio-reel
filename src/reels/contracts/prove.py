@@ -8,7 +8,8 @@ check" is reported as unverifiable, never folded into verified or violated.
 
 ``check(reel, facts)`` is pure; the thin runner (``probe_timeline`` /
 ``cmd_prove``) gathers ``AssemblyFacts`` from the rendered output and the
-reel's own structure.
+reel's own structure. Phases 0/1 run video-only; audio relations remain
+reserved for the deferred audio phase.
 """
 
 from __future__ import annotations
@@ -176,7 +177,11 @@ def check(reel: Reel, facts: AssemblyFacts) -> Report:
     elif facts.clips_have_audio and facts.output_has_audio is None:
         b.gate("audio_end_to_end", None, "audio-unknown")
     else:
-        b.gate("audio_end_to_end", True, "audio-present")
+        b.gate(
+            "audio_end_to_end",
+            True,
+            "audio-present" if facts.clips_have_audio else "no-audio-inputs",
+        )
 
     # music_ducked (sanity, not taste)
     if facts.music_present and facts.clips_have_audio:
@@ -321,6 +326,11 @@ def cmd_prove(args) -> int:
     if not reel_path.exists():
         raise Exit(ExitCodes.USAGE, f"reel document not found: {reel_path}")
     reel = _lr(reel_path)
+    if reel.music.file:
+        raise Exit(
+            ExitCodes.NOT_IMPLEMENTED,
+            "music/audio proving is deferred to a later verified audio phase",
+        )
     captures_root = Path(getattr(args, "captures", "."))
 
     # dry-run prints the report with relations evaluated from inputs (no render)

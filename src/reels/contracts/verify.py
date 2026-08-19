@@ -33,16 +33,19 @@ DATA_LIMITS = {
 # --- thresholds -------------------------------------------------------------
 
 MIN_DURATION_S = 1.0          # a sub-second capture is a dead capture
-NOISE_LUFS_FLOOR = -60.0      # below this the capture is blank/silent
+NOISE_LUMA_FLOOR = 16.0       # below this the video is effectively blank
+# Audio thresholds are retained for the deferred audio phase only.
+NOISE_LUFS_FLOOR = -60.0
 NOISE_PEAK_FLOOR = -60.0
 
-# gating (decide the verdict) vs advisory (never move it)
+# gating (decide the verdict) vs advisory (never move it). Phase 0/1 is
+# video-only: audio presence and loudness are observed only as advisory data.
 GATING_CHECKS = {
-    "parses_clean", "media_decodes", "has_audio", "min_duration",
+    "parses_clean", "media_decodes", "min_duration",
     "uniform_geometry", "not_blank", "trims_in_bounds",
 }
 ADVISORY_CHECKS = {
-    "audio_lufs_in_range", "codec_uniform", "no_static_frames",
+    "has_audio", "audio_lufs_in_range", "codec_uniform", "no_static_frames",
 }
 
 LUFS_RANGE = (-24.0, -8.0)
@@ -143,10 +146,9 @@ def check(capture: Capture, facts: Facts) -> Report:
     if not facts.available:
         # Could not gather facts — report every fact-dependent gating check as
         # unverifiable (None), which never folds into verified or violated.
-        for name in ("media_decodes", "has_audio", "min_duration",
-                     "uniform_geometry", "not_blank"):
+        for name in ("media_decodes", "min_duration", "uniform_geometry", "not_blank"):
             b.gate(name, None, "facts-unavailable")
-        for name in ("audio_lufs_in_range", "codec_uniform", "no_static_frames"):
+        for name in ("has_audio", "audio_lufs_in_range", "codec_uniform", "no_static_frames"):
             b.advise(name, None, "facts-unavailable")
         if b.verdict is None:
             b.verdict = UNVERIFIABLE
@@ -161,13 +163,15 @@ def check(capture: Capture, facts: Facts) -> Report:
         b.finding("media_decodes", "ffmpeg failed to decode the media")
         b.gate("media_decodes", False, "decode-failed")
 
-    # has_audio
+    # has_audio is advisory in phase 0/1. Video-only captures are valid; the
+    # future audio phase can promote this back to a gate once capture semantics
+    # and loudness measurement are explicitly implemented.
     if facts.has_audio is None:
-        b.gate("has_audio", None, "stream-not-evaluated")
+        b.advise("has_audio", None, "stream-not-evaluated")
     elif facts.has_audio:
-        b.gate("has_audio", True, "ok")
+        b.advise("has_audio", True, "ok")
     else:
-        b.gate("has_audio", False, "no-audio-stream")
+        b.advise("has_audio", False, "no-audio-stream")
 
     # min_duration
     if facts.duration_s is None:
@@ -188,17 +192,15 @@ def check(capture: Capture, facts: Facts) -> Report:
         b.finding("uniform_geometry", "fps/resolution drift across segments")
         b.gate("uniform_geometry", False, facts.sample_geometry)
 
-    # not_blank (LUFS / peak above noise floor)
+    # not_blank (video mean luma above the noise floor)
     not_blank = _not_blank(facts)
     if not_blank is None:
-        b.gate("not_blank", None, "loudness-unknown")
+        b.gate("not_blank", None, "video-luma-unknown")
     elif not_blank:
-        b.gate("not_blank", True,
-               {"integrated_lufs": facts.integrated_lufs, "peak_dbfs": facts.peak_dbfs})
+        b.gate("not_blank", True, {"mean_luma": facts.mean_luma})
     else:
-        b.finding("not_blank", "level at or below the noise floor (blank/silence)")
-        b.gate("not_blank", False,
-               {"integrated_lufs": facts.integrated_lufs, "peak_dbfs": facts.peak_dbfs})
+        b.finding("not_blank", "video mean luma is at or below the blankness floor")
+        b.gate("not_blank", False, {"mean_luma": facts.mean_luma})
 
     # --- advisory (never move the verdict) ----------------------------------
     if facts.integrated_lufs is not None:
@@ -237,16 +239,15 @@ def _geometry_uniform(facts: Facts) -> bool | None:
 
 
 def _not_blank(facts: Facts) -> bool | None:
-    # video-level: use loudness where present; all-None means unknown
-    lufs = facts.integrated_lufs
-    peak = facts.peak_dbfs
-    if lufs is None and peak is None:
+    """Return whether the video carries visible signal.
+
+    Audio loudness is intentionally not part of the phase-0/1 gate: a valid
+    recording may be video-only. ``signalstats`` supplies mean luma in the
+    0..255 range; missing luma remains honestly unverifiable.
+    """
+    if facts.mean_luma is None:
         return None
-    if lufs is not None and lufs > NOISE_LUFS_FLOOR:
-        return True
-    if peak is not None and peak > NOISE_PEAK_FLOOR:
-        return True
-    return False
+    return facts.mean_luma > NOISE_LUMA_FLOOR
 
 # --------------------------------------------------------------------------
 # CLI handler (thin runner; the contract itself stays pure)
@@ -265,6 +266,7 @@ def cmd_verify(args) -> int:
     from dataclasses import asdict
     from pathlib import Path as _P
 
+    from ..capture_doc import Check as _CaptureCheck
     from ..capture_doc import load_capture as _load_capture
     from ..errors import Exit as _Exit, ExitCodes as _Codes
     from ..media import probe_facts as _probe_facts
@@ -284,6 +286,41 @@ def cmd_verify(args) -> int:
         facts = _probe_facts(_P(capture.file)) if capture.file else Facts()
 
     report = check(capture, facts)
+    if not args.dry_run:
+        # Verification is a document transition, not only stdout. Persist the
+        # measured video facts and the contract report so the next command
+        # (notably `reels edit`) reads the same verified state an agent saw.
+        capture.captured.fps = round(facts.fps) if facts.fps is not None else None
+        capture.captured.width = facts.width
+        capture.captured.height = facts.height
+        capture.captured.duration_s = facts.duration_s
+        capture.captured.decode_ok = facts.decode_ok
+        capture.captured.has_audio = facts.has_audio
+        capture.captured.frames = facts.frames
+        capture.captured.mean_luma = facts.mean_luma
+        # Audio fields remain null until the deferred audio phase.
+        capture.captured.integrated_lufs = None
+        capture.captured.peak_dbfs = None
+        capture.verification.verdict = report.verdict
+        capture.verification.checks = [
+            _CaptureCheck(
+                name=item.name,
+                ok=item.ok,
+                value=item.value,
+                findings=item.findings,
+            )
+            for item in report.checks
+        ]
+        from ..capture_doc import save_capture as _save_capture
+        # Keep the on-disk document portable when media lives beside it.
+        if capture.file:
+            media_path = _P(capture.file)
+            try:
+                capture.file = str(media_path.relative_to(cap_path.resolve().parent))
+            except ValueError:
+                capture.file = str(media_path)
+        _save_capture(cap_path, capture)
+
     if args.dry_run:
         print(_json.dumps(asdict(report), indent=2) if args.json
               else f"[dry-run] verdict would be {report.verdict}")

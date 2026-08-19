@@ -13,5 +13,11 @@ reel/
 *.mov
 *.mkv
 
+# The editing schema is intentionally named `schemas/reel/`; keep it tracked.
+!schemas/
+!schemas/capture/
+!schemas/reel/
+!schemas/reel/*.json
+
 # Editor
 .DS_Store

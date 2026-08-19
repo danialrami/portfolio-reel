@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "capture_id": "rec-00000000",
+  "created": "2026-08-19T00:00:00+00:00",
+  "source": {
+    "platform": "x11",
+    "tool": "ffmpeg:x11grab",
+    "region": "monitor:0"
+  },
+  "requested": {
+    "fps": 30,
+    "codec": "h264",
+    "audio": false,
+    "mic": false,
+    "out": "./shots"
+  },
+  "captured": {
+    "fps": null,
+    "width": null,
+    "height": null,
+    "duration_s": null,
+    "decode_ok": null,
+    "has_audio": null,
+    "frames": null,
+    "mean_luma": null,
+    "integrated_lufs": null,
+    "peak_dbfs": null
+  },
+  "file": "clip.mp4",
+  "content_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "reel_id": "",
+  "verification": {
+    "verdict": "unverifiable",
+    "checks": []
+  }
+}

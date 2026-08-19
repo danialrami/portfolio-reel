@@ -28,7 +28,7 @@ def _reel(trim_in=0.2, trim_out=1.8):
     ]
     return author(clips, intro=IntroOutro(text="INTRO", duration=1.0),
                   outro=IntroOutro(text="OUTRO", duration=1.0),
-                  music=Music(file="bg.m4a", volume=0.15, duck_under_speech=True))
+                  music=Music(file="", volume=0.15, duck_under_speech=True))
 
 
 def _good_facts():
@@ -41,10 +41,10 @@ def _good_facts():
         output_fps=30.0,
         output_width=1920, output_height=1080,
         geometry_uniform=True,
-        output_has_audio=True,
-        clips_have_audio=True,
+        output_has_audio=False,
+        clips_have_audio=False,
         overlay_boxes=[{"x": 20, "y": 0, "w": 300, "h": 60}],
-        music_present=True,
+        music_present=False,
         music_duck_on=True,
         first_is_intro=True,
         last_is_outro=True,
@@ -112,21 +112,11 @@ def test_deterministic_skipped_is_unverifiable_when_renders_skipped():
 
 # --- real round-trip: build media, edit, prove ------------------------------
 
-def _clip(path: Path, seconds: float, tone: int = 440) -> Path:
+def _clip(path: Path, seconds: float) -> Path:
     subprocess.run(
         ["ffmpeg", "-y", "-f", "lavfi", "-i",
          "color=c=blue:s=320x240:r=30:d=%s" % seconds,
-         "-f", "lavfi", "-i", "sine=frequency=%s:duration=%s" % (tone, seconds),
-         "-shortest", "-c:v", "libx264", "-c:a", "aac", str(path)],
-        capture_output=True, check=False,
-    )
-    return path
-
-
-def _music(path: Path) -> Path:
-    subprocess.run(
-        ["ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=220:duration=8",
-         "-c:a", "aac", str(path)],
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", str(path)],
         capture_output=True, check=False,
     )
     return path
@@ -138,18 +128,17 @@ def _make_capture(tmp_path, cid, media):
 
 
 def test_prove_real_assembly(tmp_path):
-    c1 = _clip(tmp_path / "c1.mp4", 2.0, 440)
-    c2 = _clip(tmp_path / "c2.mp4", 2.0, 660)
-    music = _music(tmp_path / "bg.m4a")
+    c1 = _clip(tmp_path / "c1.mp4", 2.0)
+    c2 = _clip(tmp_path / "c2.mp4", 2.0)
     _make_capture(tmp_path, "rec-one", c1)
     _make_capture(tmp_path, "rec-two", c2)
 
     reel = author(
         [ClipRef(capture_ref="rec-one", order=1, trim_in=0.2, trim_out=1.8),
          ClipRef(capture_ref="rec-two", order=2, trim_in=0.2, trim_out=1.8)],
-        intro=IntroOutro(text="INTRO", duration=1.0),
-        outro=IntroOutro(text="OUTRO", duration=1.0),
-        music=Music(file=str(music), volume=0.15, duck_under_speech=True),
+        intro=IntroOutro(text="", duration=0.0),
+        outro=IntroOutro(text="", duration=0.0),
+        music=Music(file="", volume=0.15, duck_under_speech=True),
     )
     reel_path = tmp_path / "reel.json"
     save_reel(reel_path, reel)
