@@ -22,7 +22,7 @@
     "duration": 7
   },
   "music": {
-    "file": "assets/reel_background.m4a",
+    "file": "",
     "volume": 0.15,
     "duck_under_speech": true
   },

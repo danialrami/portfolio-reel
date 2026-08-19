@@ -1,11 +1,16 @@
 # reels — a screen-capture & reel primitive
 
 `reels` is a LUFS-family primitive for turning day-to-day work into portfolio
-reels. It ships two *documents* — a **Capture Document** (`capture.json`) and a
-**Reel Document** (`reel.json`) — plus two *contracts* over them
+reels. It ships two *documents* — a **Recording Document** (`capture.json`) and
+an **Editing Document** (`reel.json`) — plus two *contracts* over them
 (`reels verify`, `reels prove`), so an agent can capture, assemble, and prove
 a reel **headlessly** with explicit exit codes and never a silent "exit 0 but
 wrong".
+
+Phases 0 and 1 are intentionally **video-only**. Audio-shaped fields and the
+preliminary renderer hooks remain documented as a future extension, but the
+current capture CLI does not request audio and the verifier does not gate on it.
+See [`docs/PHASES.md`](docs/PHASES.md).
 
 The primitive is the two documents plus the two contracts. Every consumer (a
 CLI today, a PWA/editor later) reads the documents and never re-implements them.
@@ -17,13 +22,14 @@ no OBS, no obs-cli, no MoviePy.
 ```bash
 uv sync            # Python >=3.12, uv-managed
 uv run reels --version
+uv run pytest -q
 ```
 
 ## Command surface
 
 ```
 reels <command> [options] [--json]
-  capture   Record a screen/window shot        -> media + capture.json
+  capture   Record a video-only screen/window shot -> media + capture.json
   verify    Contract one against a capture     (is the capture whole?)
   edit      Author a reel.json from captures   (order, trims, overlays, intro/outro/music)
   prove     Contract two against an assembly   (did it behave as asked?)
@@ -53,11 +59,12 @@ taxonomy. No interactive prompts.
 
 ### Capture Document — `capture.json` (one per recorded shot)
 
-Normalised, typed, machine-readable statement of what a capture *is*:
+Normalised, typed, machine-readable statement of what a recording *is*:
 provenance (`source.platform/tool/region`), what was *requested* (`fps`,
-`codec`, `audio`, `mic`), what was *captured* (geometry, duration, frames,
-integrated LUFS / peak dBFS), the media `file` and its `content_sha256`, and a
-`verification` block (verdict + checks).
+`codec`, and the video output), what was *captured* (geometry, duration, frames,
+mean video luma), the media `file` and its `content_sha256`, and a
+`verification` block (verdict + checks). Audio-shaped fields remain explicit
+null/false extension points for the deferred audio phase.
 
 ### Reel Document — `reel.json` (the timeline / assembly manifest)
 
@@ -83,11 +90,12 @@ Two-state tools fold "I couldn't check" into one of the others and lie.
 
 ### Contract one — `reels verify` (is the capture whole?)
 
-Gating: `parses_clean`, `media_decodes`, `has_audio`, `min_duration`,
+Gating: `parses_clean`, `media_decodes`, `min_duration`,
 `uniform_geometry`, `not_blank`, `trims_in_bounds`.
 
-Advisory (never move the verdict): `audio_lufs_in_range`, `codec_uniform`,
-`no_static_frames`.
+`not_blank` uses video mean luma. Advisory (never move the verdict):
+`has_audio`, `audio_lufs_in_range`, `codec_uniform`, `no_static_frames`.
+Audio measurement is deferred rather than silently treated as verified.
 
 ### Contract two — `reels prove` (did the assembly behave as asked?)
 
@@ -101,7 +109,7 @@ byte-identical render).
 
 ```bash
 # 1. capture a shot (headless; SIGINT stops it, leaving a partial + unverifiable doc)
-reels capture --out ./shots --name demo --region monitor:0 --audio --json
+reels capture --out ./shots --name demo --region monitor:0 --json
 
 # 2. prove the take is whole before using it
 reels verify ./shots --json            # exit 0 (verified)
@@ -130,8 +138,9 @@ adapters:
 | Windows | `ffmpeg -f gdigrab` |
 
 Rendering is a pure-ffmpeg `filter_complex` build — trims, fades, `drawtext`
-overlays, intro/outro, ordered concat, and background-music **ducking**
-(`sidechaincompress`) that never replaces clip audio.
+overlays, intro/outro, and ordered video concat. The preliminary
+background-music ducking graph (`sidechaincompress`) is dormant in phases 0 and
+1 and will return only with a separately verified audio phase.
 
 ## Repository layout
 
@@ -144,22 +153,31 @@ src/reels/
   reel_doc.py       Reel Document schema + parser
   adapters/         platform capture adapters (x11 / wayland / mac / win)
   capture.py        headless capture -> media + capture.json
-  media.py          ffprobe/ffmpeg facts runner (LUFS, decode, geometry)
+  media.py          ffprobe/ffmpeg facts runner (decode, geometry, mean luma)
   contracts/
     verify.py       Contract one (gating) + verify CLI
     prove.py        Contract two (metamorphic) + prove CLI
   render.py         pure-ffmpeg renderer
 tests/              per-unit test suites
 docs/SPEC.md        the specification
+docs/PHASES.md      phase boundaries and deferred audio plan
 docs/units/         unit-of-work contracts
 docs/legacy-migration.md   old OBS/MoviePy -> reels mapping
-examples/reel.json  sample reel document
+schemas/capture/    Recording Document JSON Schemas
+schemas/reel/       Editing Document JSON Schemas
+.agents/skills/     agent usage guidance
+examples/capture.json sample recording document
+examples/reel.json  sample editing document
 ```
 
 ## Spec & philosophy
 
 - [`docs/SPEC.md`](docs/SPEC.md) — the full specification and command surface.
+- [`docs/PHASES.md`](docs/PHASES.md) — phase 0/1 scope and the deferred audio boundary.
 - [`docs/units/`](docs/units/) — unit-of-work contracts a fresh agent can build
   from with no other context.
+- [`schemas/capture/capture-v1.json`](schemas/capture/capture-v1.json) and
+  [`schemas/reel/reel-v1.json`](schemas/reel/reel-v1.json) — recording/editing
+  document contracts.
 - KB doctrine this replicates: one parser, two contracts, three verdicts,
   declared truncation, deterministic identity — "proven, not exited 0".

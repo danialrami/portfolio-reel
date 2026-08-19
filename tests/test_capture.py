@@ -9,6 +9,7 @@ integration VM in Phase 5.
 from __future__ import annotations
 
 import json
+import sys
 
 import pytest
 
@@ -79,6 +80,7 @@ def test_wayland_command_uses_monitor_flag(monkeypatch, tmp_path):
     res = run_capture(req, dry_run=True)
     assert res.command[0] == "wl-screenrec"
     assert "--monitor" in res.command
+    assert "--audio" not in res.command
 
 
 def test_dry_run_writes_no_media(monkeypatch, tmp_path):

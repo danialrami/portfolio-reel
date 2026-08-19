@@ -1,0 +1,31 @@
+{
+  "name": "reels",
+  "version": "0.1.0",
+  "status": "phase-0-1-video-only",
+  "description": "Contract-first headless recording and editing primitive for video reels.",
+  "entrypoint": "reels",
+  "runtime": {
+    "python": ">=3.12",
+    "package_manager": "uv",
+    "required_binaries": ["ffmpeg", "ffprobe"]
+  },
+  "schemas": {
+    "recording": "schemas/capture/capture-v1.json",
+    "editing": "schemas/reel/reel-v1.json"
+  },
+  "commands": [
+    {"name": "capture", "flow": "recording", "json": true, "dry_run": true},
+    {"name": "verify", "flow": "recording", "json": true, "dry_run": true},
+    {"name": "edit", "flow": "editing", "json": true, "dry_run": true},
+    {"name": "prove", "flow": "editing", "json": true, "dry_run": true},
+    {"name": "render", "flow": "editing", "json": true, "dry_run": true},
+    {"name": "list", "flow": "registry", "json": true},
+    {"name": "id", "flow": "identity", "json": true}
+  ],
+  "verdicts": ["verified", "violated", "unverifiable"],
+  "audio": {
+    "status": "deferred",
+    "requested_by_default": false,
+    "fields_retained_for_future_extension": true
+  }
+}

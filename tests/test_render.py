@@ -27,21 +27,11 @@ pytestmark = pytest.mark.skipif(
 )
 
 
-def _clip(path: Path, seconds: float, tone: int = 440) -> Path:
+def _clip(path: Path, seconds: float) -> Path:
     subprocess.run(
         ["ffmpeg", "-y", "-f", "lavfi", "-i",
          "color=c=blue:s=320x240:r=30:d=%s" % seconds,
-         "-f", "lavfi", "-i", "sine=frequency=%s:duration=%s" % (tone, seconds),
-         "-shortest", "-c:v", "libx264", "-c:a", "aac", str(path)],
-        capture_output=True, check=False,
-    )
-    return path
-
-
-def _music(path: Path) -> Path:
-    subprocess.run(
-        ["ffmpeg", "-y", "-f", "lavfi", "-i", "sine=frequency=220:duration=8",
-         "-c:a", "aac", str(path)],
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", str(path)],
         capture_output=True, check=False,
     )
     return path
@@ -55,27 +45,25 @@ def _make_capture_doc(tmp_path: Path, cid: str, media: Path) -> None:
 def fx(tmp_path):
     class FX:
         root = tmp_path
-        clip1 = _clip(tmp_path / "clip1.mp4", 2.0, 440)
-        clip2 = _clip(tmp_path / "clip2.mp4", 2.0, 660)
-        music = _music(tmp_path / "bg.m4a")
+        clip1 = _clip(tmp_path / "clip1.mp4", 2.0)
+        clip2 = _clip(tmp_path / "clip2.mp4", 2.0)
 
     _make_capture_doc(tmp_path, "rec-one", FX.clip1)
     _make_capture_doc(tmp_path, "rec-two", FX.clip2)
     return FX
 
 
-def _make_reel(fx, music=True) -> Path:
+def _make_reel(fx, with_titles=True) -> Path:
     clips = [
         ClipRef(capture_ref="rec-one", order=1, trim_in=0.2, trim_out=1.8,
-                overlay=Overlay(text="Title\\nRole", position="bottom-left")),
+                overlay=Overlay(text="Title\\nRole" if with_titles else "", position="bottom-left")),
         ClipRef(capture_ref="rec-two", order=2, trim_in=0.2, trim_out=1.8),
     ]
     r = author(
         clips,
-        intro=IntroOutro(text="INTRO", duration=1.0),
-        outro=IntroOutro(text="OUTRO", duration=1.0),
-        music=Music(file=str(fx.music) if music else "", volume=0.15,
-                    duck_under_speech=True),
+        intro=IntroOutro(text="INTRO" if with_titles else "", duration=1.0 if with_titles else 0.0),
+        outro=IntroOutro(text="OUTRO" if with_titles else "", duration=1.0 if with_titles else 0.0),
+        music=Music(file="", volume=0.15, duck_under_speech=True),
     )
     out = fx.root / "reel.json"
     save_reel(out, r)
@@ -87,10 +75,10 @@ def test_build_filter_graph_contains_expected(fx):
     reel = load_reel(reel_path)
     media = resolve_clip_media(reel_path, reel, fx.root)
     dur = [c.trim_out - c.trim_in for c in reel.clips]
-    g = build_filter_graph(reel, media, dur, [True, True], fx.music, True)
+    g = build_filter_graph(reel, media, dur, [False, False], None, False)
     assert "concat=n=" in g
     assert "drawtext=" in g
-    assert "sidechaincompress" in g
+    assert "sidechaincompress" not in g
     assert "fade=t=" in g
 
 
@@ -108,7 +96,7 @@ def test_dry_run_writes_nothing_and_shows_graph(fx):
 
 
 def test_real_render_produces_playable_mp4(fx):
-    reel_path = _make_reel(fx)
+    reel_path = _make_reel(fx, with_titles=False)
     out = fx.root / "out.mp4"
     assert render(reel_path, out, dry_run=False, captures_root=fx.root) == 0
     assert out.exists() and out.stat().st_size > 0

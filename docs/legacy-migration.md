@@ -10,8 +10,9 @@ verified nothing.
 `reels` **replaces** those scripts. The legacy files
 `capture_portfolio_clip.py`, `create_reel.py`, and `run_capture.sh` are
 removed. **obs-cli, OBS, and MoviePy are no longer required anywhere in the
-pipeline.** The only runtime dependency shared across platforms is `ffmpeg`
-(+ `ffprobe`).
+pipeline.** Phases 0/1 are video-only; audio capture, LUFS/peak measurement,
+and music ducking remain explicitly deferred. The only runtime dependency
+shared across platforms is `ffmpeg` (+ `ffprobe`).
 
 ## Migration map: `config.yaml` → `reel.json`
 
@@ -48,7 +49,7 @@ The legacy per-reel `config.yaml` fields move into the Reel Document
 | Interactive `input()` prompts       | headless args; `--json`/`--dry-run` on every command           |
 | OBS + `obs-cli` recording           | `reels capture` via ffmpeg / `wl-screenrec` platform adapters  |
 | MoviePy `VideoFileClip` assembly    | `reels render` pure-ffmpeg `filter_complex` graph              |
-| Music *replaced* clip audio         | music *ducked* under clip audio (`sidechaincompress`)          |
+| Music *replaced* clip audio         | deferred from phases 0/1; future audio phase will use `sidechaincompress` |
 | "exit 0" meant done                 | `reels verify` / `reels prove` return three verdicts (0/5/7)   |
 | YAML metadata files                 | normalized `capture.json` + `reel.json` documents              |
 
@@ -58,7 +59,7 @@ A quick one-shot can still kick off a capture; it now calls the agent-drivable
 CLI instead of a shell script that summons OBS:
 
 ```bash
-reels capture --out ~/reel/shots --name demo --region monitor:0 --audio --json
+reels capture --out ~/reel/shots --name demo --region monitor:0 --json
 ```
 
 The Obsidian-vault folder conventions you already use for sorting reels are

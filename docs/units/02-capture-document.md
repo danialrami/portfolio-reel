@@ -1,8 +1,9 @@
 # Unit 02 — Capture Document schema & parser
 
 ## Objective
-Define the normalized `capture.json` schema and a single load/save/validate module — the seed of
-the whole primitive (one schema, many consumers).
+Define the normalized `capture.json` Recording Document and a single load/save/validate module —
+the seed of the recording flow (one schema, many consumers). The written artifact is specified by
+`schemas/capture/capture-v1.json`.
 
 ## Context
 - `docs/SPEC.md` — the Capture Document shape (`schema_version`, `capture_id`, `source`,

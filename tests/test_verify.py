@@ -32,7 +32,7 @@ def _good_facts():
         available=True,
         duration_s=12.4,
         width=1920, height=1080, fps=30.0, frames=372,
-        decode_ok=True, has_audio=True,
+        decode_ok=True, mean_luma=128.0, has_audio=True,
         integrated_lufs=-18.2, peak_dbfs=-6.1,
         codecs=["h264", "aac"],
         sample_geometry=[(30.0, 1920, 1080)] * 3,
@@ -46,8 +46,8 @@ def _capture():
 
 def _make_clip(path: Path, *, seconds: float = 2.0, silent: bool = False) -> Path:
     src = "color=c=white:s=320x240:r=30:d=%s" % seconds
-    cmd = ["ffmpeg", "-y", "-f", "lavfi", "-i", src, "-pix_fmt", "yuv420p",
-           "-shortest", str(path)]
+    cmd = ["ffmpeg", "-y", "-f", "lavfi", "-i", src, "-c:v", "libx264",
+           "-pix_fmt", "yuv420p", "-shortest", str(path)]
     if not silent:
         cmd = (["ffmpeg", "-y", "-f", "lavfi", "-i", src,
                 "-f", "lavfi", "-i", "sine=frequency=440:duration=%s" % seconds,
@@ -61,25 +61,24 @@ def _make_clip(path: Path, *, seconds: float = 2.0, silent: bool = False) -> Pat
 def test_verified_when_all_gating_ok():
     r = check(_capture(), _good_facts())
     assert r.verdict == "verified"
-    for name in ("parses_clean", "media_decodes", "has_audio", "min_duration",
+    for name in ("parses_clean", "media_decodes", "min_duration",
                  "uniform_geometry", "not_blank", "trims_in_bounds"):
         assert r.check(name).ok is True, name
 
 
 def test_violated_when_blank():
     facts = _good_facts()
-    facts.integrated_lufs = -80.0
-    facts.peak_dbfs = -80.0
+    facts.mean_luma = 0.0
     r = check(_capture(), facts)
     assert r.verdict == "violated"
     assert r.check("not_blank").ok is False
 
 
-def test_violated_when_no_audio():
+def test_no_audio_is_advisory_in_video_phase():
     facts = _good_facts()
     facts.has_audio = False
     r = check(_capture(), facts)
-    assert r.verdict == "violated"
+    assert r.verdict == "verified"
     assert r.check("has_audio").ok is False
 
 
@@ -111,8 +110,9 @@ def test_unverifiable_when_facts_missing():
     r = check(_capture(), Facts(available=False))
     assert r.verdict == "unverifiable"
     # never folds "couldn't check" into verified or violated
-    for name in ("media_decodes", "has_audio", "min_duration", "not_blank"):
+    for name in ("media_decodes", "min_duration", "not_blank"):
         assert r.check(name).ok is None, name
+    assert r.check("has_audio").ok is None
 
 
 def test_findings_capped_and_declared():
@@ -134,15 +134,18 @@ def test_parses_clean_false_violates():
 
 # --- media facts runner against real ffmpeg --------------------------------
 
-def test_probe_facts_real_clip(tmp_path):
-    clip = _make_clip(tmp_path / "clip.mp4", seconds=1.5, silent=False)
+def test_probe_facts_real_video_only_clip(tmp_path):
+    clip = _make_clip(tmp_path / "clip.mp4", seconds=1.5, silent=True)
     facts = probe_facts(clip)
     assert facts.available is True
     assert facts.duration_s is not None and facts.duration_s >= 1.0
     assert facts.width == 320 and facts.height == 240
     assert facts.decode_ok is True
-    assert facts.has_audio is True
-    assert facts.integrated_lufs is not None and facts.integrated_lufs > -60
+    assert facts.has_audio is False
+    assert facts.mean_luma is not None and facts.mean_luma > 16.0
+    # Audio measurement is deliberately deferred in phase 0/1.
+    assert facts.integrated_lufs is None
+    assert facts.peak_dbfs is None
 
 
 def test_probe_facts_missing_file_unverifiable(tmp_path):
@@ -163,7 +166,7 @@ def _write_capture(tmp_path, clip, verdict_relevant=True):
 
 
 def test_cmd_verify_verified(tmp_path, capsys):
-    clip = _make_clip(tmp_path / "clip.mp4", seconds=1.5)
+    clip = _make_clip(tmp_path / "clip.mp4", seconds=1.5, silent=True)
     _write_capture(tmp_path, clip)
 
     class Args:
@@ -172,6 +175,10 @@ def test_cmd_verify_verified(tmp_path, capsys):
         dry_run = False
 
     assert cmd_verify(Args()) == ExitCodes.OK
+    persisted = json.loads((tmp_path / "capture.json").read_text())
+    assert persisted["verification"]["verdict"] == "verified"
+    assert persisted["captured"]["mean_luma"] is not None
+    assert persisted["file"] == "clip.mp4"
 
 
 def test_cmd_verify_unverifiable_missing_media(tmp_path, capsys):

@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://lufs.audio/portfolio-reel/schemas/capture/capture-v1.json",
+  "title": "Reels Capture Document v1",
+  "description": "The normalized recording artifact for the phase-0/1 video-only flow. Audio fields are retained as an explicit extension point and must remain disabled or null until the verified audio phase.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "capture_id",
+    "created",
+    "source",
+    "requested",
+    "captured",
+    "file",
+    "content_sha256",
+    "reel_id",
+    "verification"
+  ],
+  "properties": {
+    "schema_version": { "const": 1 },
+    "capture_id": {
+      "type": "string",
+      "pattern": "^rec-[0-9a-f]{8}$"
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["platform", "tool", "region"],
+      "properties": {
+        "platform": {
+          "type": "string",
+          "enum": ["wayland", "x11", "win", "mac"]
+        },
+        "tool": { "type": "string", "minLength": 1 },
+        "region": { "type": "string", "minLength": 1 }
+      }
+    },
+    "requested": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fps", "codec", "audio", "mic", "out"],
+      "properties": {
+        "fps": { "type": "integer", "minimum": 1, "default": 30 },
+        "codec": { "type": "string", "minLength": 1, "default": "h264" },
+        "audio": {
+          "const": false,
+          "description": "Audio capture is deferred; phase-0/1 recordings are video-only."
+        },
+        "mic": {
+          "const": false,
+          "description": "Microphone capture is deferred; phase-0/1 recordings are video-only."
+        },
+        "out": { "type": "string", "minLength": 1, "default": "./shots" }
+      }
+    },
+    "captured": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "fps",
+        "width",
+        "height",
+        "duration_s",
+        "decode_ok",
+        "has_audio",
+        "frames",
+        "mean_luma",
+        "integrated_lufs",
+        "peak_dbfs"
+      ],
+      "properties": {
+        "fps": { "type": ["integer", "null"], "minimum": 1 },
+        "width": { "type": ["integer", "null"], "minimum": 1 },
+        "height": { "type": ["integer", "null"], "minimum": 1 },
+        "duration_s": { "type": ["number", "null"], "minimum": 0 },
+        "decode_ok": { "type": ["boolean", "null"] },
+        "has_audio": {
+          "type": ["boolean", "null"],
+          "description": "Null before verification; false after a video-only phase-0/1 verification. Audio remains deferred."
+        },
+        "frames": { "type": ["integer", "null"], "minimum": 0 },
+        "mean_luma": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Video mean luma from signalstats; used by the not_blank gate."
+        },
+        "integrated_lufs": {
+          "const": null,
+          "description": "Reserved for the deferred audio phase."
+        },
+        "peak_dbfs": {
+          "const": null,
+          "description": "Reserved for the deferred audio phase."
+        }
+      }
+    },
+    "file": { "type": "string", "minLength": 1 },
+    "content_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "reel_id": {
+      "anyOf": [
+        { "const": "" },
+        { "type": "string", "pattern": "^reel-[0-9a-f]{8}$" }
+      ]
+    },
+    "verification": { "$ref": "#/definitions/verification" }
+  },
+  "definitions": {
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "ok", "value", "findings"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "ok": {
+          "type": ["boolean", "null"],
+          "description": "true means passed, false means violated, null means unverifiable."
+        },
+        "value": {},
+        "findings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["total", "shown", "truncated"],
+          "properties": {
+            "total": { "type": "integer", "minimum": 0 },
+            "shown": { "type": "integer", "minimum": 0 },
+            "truncated": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "checks"],
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": ["verified", "violated", "unverifiable"]
+        },
+        "checks": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/check" }
+        }
+      }
+    }
+  }
+}

@@ -1,10 +1,11 @@
 """Media facts runner: the thin IO layer the pure contracts consume.
 
 ``probe_facts`` runs ffprobe to learn duration/geometry/streams, decodes the
-file to prove it is readable, and measures loudness (integrated LUFS + peak
-dBFS) via ffmpeg ``ebur128``. It never decides a verdict — it only gathers
-``Facts`` that ``reels/contracts/verify.py`` consumes purely. Missing facts
-are reported as ``available=False`` (unverifiable), never folded into "fine".
+file to prove it is readable, and measures video mean luma via ffmpeg
+``signalstats``. It never decides a verdict — it only gathers ``Facts`` that
+``reels/contracts/verify.py`` consumes purely. Audio loudness measurement is
+retained as a deferred phase implementation. Missing facts are reported as
+``available=False`` (unverifiable), never folded into "fine".
 
 Shared by verify (Unit 04) and prove (Unit 06) — later units only read it.
 """
@@ -30,6 +31,7 @@ class Facts:
     fps: float | None = None
     frames: int | None = None
     decode_ok: bool | None = None
+    mean_luma: float | None = None
     has_audio: bool | None = None
     integrated_lufs: float | None = None
     peak_dbfs: float | None = None
@@ -85,6 +87,32 @@ def _loudness(path: Path) -> tuple[float | None, float | None]:
     if m:
         peak = float(m[-1])
     return lufs, peak
+
+
+def _video_brightness(path: Path) -> float | None:
+    """Return mean frame luma (0..255) using ffmpeg signalstats.
+
+    This is the phase-0/1 blankness signal. Audio loudness measurement remains
+    intentionally deferred; keep that implementation below for the later audio
+    phase rather than making video verification depend on an audio stream.
+    """
+    _require("ffmpeg")
+    proc = subprocess.run(
+        [
+            "ffmpeg", "-hide_banner", "-i", str(path),
+            "-map", "0:v:0", "-an", "-vf",
+            "signalstats,metadata=print:key=lavfi.signalstats.YAVG:file=-",
+            "-f", "null", "-",
+        ],
+        capture_output=True, text=True,
+    )
+    if proc.returncode != 0:
+        return None
+    text = proc.stdout + proc.stderr
+    values = re.findall(r"lavfi\.signalstats\.YAVG=([0-9]+(?:\.[0-9]+)?)", text)
+    if not values:
+        return None
+    return sum(float(value) for value in values) / len(values)
 
 
 def _avg_fps(av_fps: str | None) -> float | None:
@@ -144,5 +172,8 @@ def probe_facts(path: Path) -> Facts:
             facts.sample_geometry.append((fps, s.get("width"), s.get("height")))
 
     facts.decode_ok = _decode_check(path)
-    facts.integrated_lufs, facts.peak_dbfs = _loudness(path)
+    facts.mean_luma = _video_brightness(path)
+    # Deferred audio phase: when audio capture is promoted from advisory to a
+    # verified feature, populate these fields with _loudness(path).
+    # facts.integrated_lufs, facts.peak_dbfs = _loudness(path)
     return facts

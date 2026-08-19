@@ -2,8 +2,8 @@
 
 ## Objective
 Implement a pure-ffmpeg headless renderer that turns a `reel.json` into the final video — trims,
-concat, fades, `drawtext` overlays, intro/outro, background-music ducking — with `--dry-run`,
-`--json`, and no MoviePy/ImageMagick.
+concat, fades, `drawtext` overlays, and intro/outro — with `--dry-run`, `--json`, and no
+MoviePy/ImageMagick. Background music/ducking is deferred from phases 0/1.
 
 ## Context
 - `docs/SPEC.md` — render command, output block, cross-platform ffmpeg-only stance.
@@ -16,7 +16,8 @@ concat, fades, `drawtext` overlays, intro/outro, background-music ducking — wi
 - [ ] `reels render reel.json --out out.mp4` produces a playable mp4, exits 0.
 - [ ] Trims, fades, overlays, intro/outro, and an ordered concat are all applied via ffmpeg
       `filter_complex` only (no MoviePy import anywhere).
-- [ ] Background music is ducked under clip audio (e.g. `sidechaincompress`), not replacing it.
+- [ ] Phase 0/1 does not capture or render audio; the existing `sidechaincompress` path is a
+      deferred implementation to be re-enabled only with an audio contract and fixtures.
 - [ ] `--dry-run --json` prints the exact ffmpeg command + filter graph and writes nothing, exit 0.
 - [ ] Missing output dir / bad source exit per taxonomy (3/4), never a traceback.
 

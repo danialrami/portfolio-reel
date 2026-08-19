@@ -1,9 +1,9 @@
 """Pure-ffmpeg renderer: turn a Reel Document into the final video (reels render).
 
-Trims, fades, ``drawtext`` overlays, intro/outro, ordered concat, and
-background-music ducking are all expressed as a single ``filter_complex``
-graph — no MoviePy, no ImageMagick, no OBS. Music is *ducked* under clip audio
-with ``sidechaincompress`` (it never replaces clip audio).
+Trims, fades, ``drawtext`` overlays, intro/outro, and ordered video concat are
+expressed as a single ``filter_complex`` graph — no MoviePy, no ImageMagick, no
+OBS. The preliminary background-music ducking graph is retained for a later,
+explicitly verified audio phase and is not part of phases 0/1.
 
 Output is staged in a temp dir then atomically moved to the destination, so a
 failed render never leaves a half-written file where the user asked for one.
@@ -239,6 +239,11 @@ def _build_args(reel: Reel, clip_paths: list[Path], music_path: Path | None,
 def render(reel_path: Path, out: Path, dry_run: bool = False,
            captures_root: Path | None = None) -> int:
     reel = load_reel(reel_path)
+    if reel.music.file:
+        raise Exit(
+            ExitCodes.NOT_IMPLEMENTED,
+            "music/audio rendering is deferred to a later verified audio phase",
+        )
     try:
         clip_paths = resolve_clip_media(reel_path, reel, captures_root)
     except Exit:
@@ -256,8 +261,13 @@ def render(reel_path: Path, out: Path, dry_run: bool = False,
             # trim_out unset (0) -> use the clip's real duration
             clip_durations.append(max(0.0, _media_duration(p) - c.trim_in))
     has_audio = [_stream_has_audio(p) for p in clip_paths]
-    if not clip_paths or clip_paths[0].name == "clip.mp4":
+    if dry_run and (not clip_paths or all(p == Path("clip.mp4") for p in clip_paths)):
         has_audio = [True] * len(clip_paths)  # best-effort graph for dry-run
+    if any(has_audio) and not dry_run:
+        raise Exit(
+            ExitCodes.NOT_IMPLEMENTED,
+            "audio streams in reel inputs are deferred to a later verified audio phase",
+        )
 
     music_path = Path(reel.music.file) if reel.music.file else None
     music_has_audio = bool(music_path and music_path.exists() and _stream_has_audio(music_path))

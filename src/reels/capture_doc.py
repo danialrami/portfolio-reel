@@ -55,6 +55,7 @@ class Captured:
     decode_ok: Optional[bool] = None
     has_audio: Optional[bool] = None
     frames: Optional[int] = None
+    mean_luma: Optional[float] = None
     integrated_lufs: Optional[float] = None
     peak_dbfs: Optional[float] = None
 
@@ -62,7 +63,8 @@ class Captured:
 @dataclass
 class Check:
     name: str
-    ok: bool
+    # Tri-state is deliberate: None means the check was not evaluable.
+    ok: Optional[bool]
     value: Any = None
     findings: dict = field(default_factory=lambda: {"total": 0, "shown": 0, "truncated": 0})
 
@@ -175,10 +177,13 @@ def parse_capture(text: str) -> Capture:
         c.verification.verdict = v.get("verdict", UNVERIFIABLE)
         for ch in v.get("checks", []) or []:
             if isinstance(ch, dict):
+                check_ok = ch.get("ok")
+                if not isinstance(check_ok, bool) and check_ok is not None:
+                    check_ok = bool(check_ok)
                 c.verification.checks.append(
                     Check(
                         name=ch.get("name", ""),
-                        ok=bool(ch.get("ok")),
+                        ok=check_ok,
                         value=ch.get("value"),
                         findings=ch.get("findings") or {"total": 0, "shown": 0, "truncated": 0},
                     )

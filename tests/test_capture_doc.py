@@ -45,18 +45,19 @@ def test_parse_full_document():
         "schema_version": 1,
         "capture_id": "rec-12345678",
         "source": {"platform": "wayland", "tool": "wl-screenrec", "region": "monitor:0"},
-        "requested": {"fps": 30, "codec": "h264", "audio": True, "mic": False, "out": "./shots"},
+        "requested": {"fps": 30, "codec": "h264", "audio": False, "mic": False, "out": "./shots"},
         "captured": {
             "fps": 30, "width": 1920, "height": 1080, "duration_s": 12.4,
-            "decode_ok": True, "has_audio": True, "frames": 372,
-            "integrated_lufs": -18.2, "peak_dbfs": -6.1,
+            "decode_ok": True, "has_audio": False, "frames": 372,
+            "mean_luma": 128.0, "integrated_lufs": None, "peak_dbfs": None,
         },
         "file": "20260619_153000_label.mp4",
     }
     c = parse_capture(json.dumps(doc))
     assert c.source.platform == "wayland"
     assert c.captured.width == 1920
-    assert c.captured.integrated_lufs == -18.2
+    assert c.captured.mean_luma == 128.0
+    assert c.captured.integrated_lufs is None
     assert c.captured.frames == 372
     assert c.file == "20260619_153000_label.mp4"
     assert validate(c) == []

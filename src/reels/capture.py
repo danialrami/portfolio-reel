@@ -73,15 +73,23 @@ def _build_capture(
 
 
 def run_capture(req: CaptureRequest, dry_run: bool = False) -> CaptureResult:
+    if req.audio or req.mic:
+        raise Exit(
+            ExitCodes.NOT_IMPLEMENTED,
+            "audio capture is deferred to a later verified audio phase",
+        )
     adapter = _adapters.detect()  # raises Exit(3) when no supported source
     cmd = adapter.build_command(req)
 
     out_dir = Path(req.out)
     os.makedirs(out_dir, exist_ok=True)
 
-    # media_path is the last arg of the command (the output file)
-    media_path = Path(cmd[-1])
-    media_path = out_dir / media_path.name
+    # Adapter commands return a basename as their final output argument. Resolve
+    # it into the requested directory before launching the process; otherwise a
+    # successful adapter writes into the agent's cwd while the document builder
+    # looks under --out and fails to hash the media.
+    media_path = out_dir / Path(cmd[-1]).name
+    cmd[-1] = str(media_path)
 
     if dry_run:
         c = Capture()
@@ -119,6 +127,12 @@ def run_capture(req: CaptureRequest, dry_run: bool = False) -> CaptureResult:
                 proc.kill()
                 proc.wait()
 
+    if not media_path.exists():
+        raise Exit(
+            ExitCodes.SOURCE,
+            f"capture command produced no media at {media_path}",
+        )
+
     c = _build_capture(adapter, req, media_path, aborted)
     if aborted:
         c.verification.verdict = UNVERIFIABLE
@@ -130,8 +144,8 @@ def cmd_capture(args) -> int:
     req = CaptureRequest(
         region=args.region,
         fps=args.fps,
-        audio=args.audio,
-        mic=args.mic,
+        # Audio remains a document-level extension point but is not exposed or
+        # requested by the phase-0/1 CLI.
         duration=args.duration,
         codec=args.codec,
         out=args.out,

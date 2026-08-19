@@ -1,6 +1,6 @@
 # SPEC — `reels`: a LUFS-family screen-capture & reel primitive
 
-**Status:** proposed · **Owner:** Daniel · **Companion KB suites:**
+**Status:** phase 0/1 implementation · **Owner:** Daniel · **Companion KB suites:**
 `agent-knowledge/docs/product/lufs-sfz/02-the-instrument-primitive.md`,
 `agent-knowledge/docs/product/lufs-recorder/`, `.../verifier-philosophy/`
 
@@ -20,10 +20,10 @@ reframes a sampler.
 ## The reframe
 
 ```
-   capture (ffmpeg / wl-screenrec)          edit (timeline)
+   record (ffmpeg / wl-screenrec)          edit (timeline)
         │                                        │
         ▼                                        ▼
-   Capture Document (capture.json)   ──▶   Reel Document (reel.json)
+   Recording Document (capture.json) ──▶ Editing Document (reel.json)
         │                                        │
         └──────── debug/verify ◀── prove ────────┘
                               │
@@ -53,16 +53,23 @@ consumers, so the interfaces cannot drift — the same one-parser discipline the
    - macOS → `ffmpeg -f avfoundation`
    - Windows → `ffmpeg -f gdigrab` / `ddagrab`
 3. **Cross-platform & maintainable.** Only runtime dependency shared everywhere is `ffmpeg`
-   (+`ffprobe`). Capture adapters are thin, swappable, and platform-detected. Render is a pure
+   (+`ffprobe`). Recording adapters are thin, swappable, and platform-detected. Render is a pure
    ffmpeg `filter_complex` build — no MoviePy, no ImageMagick, no fragile API churn.
-4. **Verified, not "exited 0".** Two contracts, each with **three verdicts**:
+4. **Video-first and explicit about deferral.** Phases 0 and 1 record, verify, edit, prove, and
+   render video-only. Audio-shaped document fields remain reserved for a later verified phase;
+   audio is never silently captured or treated as a successful gate.
+5. **Verified, not "exited 0".** Two contracts, each with **three verdicts**:
    `verified · violated · unverifiable`. "I could not check" is never reported as "fine".
-5. **uv-managed Python.** `uv` for the project venv/lock. Python ≥3.12. Standard library for the
+6. **uv-managed Python.** `uv` for the project venv/lock. Python ≥3.12. Standard library for the
    CLI (`argparse`, `json`, `subprocess`); zero third-party Python deps for the core.
 
 ## The documents (the unit of value)
 
-### Capture Document — `capture.json` (one per recorded shot)
+The recording and editing flows have separate schemas under `schemas/capture/` and
+`schemas/reel/`. Python remains the tolerant parser; the schemas describe normalized written
+artifacts.
+
+### Recording Document — `capture.json` (one per recorded shot)
 
 Normalised, typed, machine-readable statement of what a capture *is*:
 
@@ -75,8 +82,8 @@ Normalised, typed, machine-readable statement of what a capture *is*:
   "requested": { "fps": 30, "codec": "h264", "audio": true, "mic": false, "out": "./shots" },
   "captured": {
     "fps": 30, "width": 1920, "height": 1080, "duration_s": 12.4,
-    "decode_ok": true, "has_audio": true, "frames": 372,
-    "integrated_lufs": -18.2, "peak_dbfs": -6.1
+    "decode_ok": true, "has_audio": false, "frames": 372,
+    "mean_luma": 128.0, "integrated_lufs": null, "peak_dbfs": null
   },
   "file": "20260619_153000_label.mp4",
   "content_sha256": "…", "reel_id": "reel-<hex>",
@@ -86,7 +93,7 @@ Normalised, typed, machine-readable statement of what a capture *is*:
 
 Every default made explicit; every path normalised; the media hash gives deterministic identity.
 
-### Reel Document — `reel.json` (the timeline/assembly manifest)
+### Editing Document — `reel.json` (the timeline/assembly manifest)
 
 ```jsonc
 {
@@ -96,7 +103,7 @@ Every default made explicit; every path normalised; the media hash gives determi
   "style": { "font": "…", "overlay_bg": "rgba(0,0,0,0.5)", "fade_duration": 0.5 },
   "intro":  { "text": "NAME\n…", "duration": 5 },
   "outro":  { "text": "…", "duration": 7 },
-  "music":  { "file": "assets/bg.mp3", "volume": 0.15, "duck_under_speech": true },
+  "music":  { "file": "", "volume": 0.15, "duck_under_speech": true },
   "clips": [
     { "capture_ref": "rec-…", "trim_in": 10, "trim_out": 40, "order": 1,
       "overlay": { "text": "Title\nRole\nClient — Year", "position": "bottom-left" } }
@@ -116,13 +123,13 @@ touches no IO so it runs identically in the CLI, a browser and a future workchai
 |---|---|
 | `parses_clean` | is the `capture.json` schema-valid |
 | `media_decodes` | does ffprobe open the media, stream readable |
-| `has_audio` | is there an audio stream with measurable level |
 | `min_duration` | is duration ≥ threshold (no 0.2s dead capture) |
 | `uniform_geometry` | is fps/resolution stable (no segment drift) |
-| `not_blank` | is mean brightness / LUFS above noise floor (not all-black/silence) |
+| `not_blank` | is video mean luma above the blankness floor (not all-black) |
 | `trims_in_bounds` | do `trim_in`/`trim_out` fall inside the capture |
 
-**Advisory** (never move the verdict): `audio_lufs_in_range`, `codec_uniform`, `no_static_frames`.
+**Advisory** (never move the verdict): `has_audio`, `audio_lufs_in_range`, `codec_uniform`,
+`no_static_frames`. Audio presence and loudness are deferred, not silently passed.
 
 ## Contract two — did the assembly behave as asked? (`reels prove`)
 
@@ -159,7 +166,7 @@ caps in `DATA_LIMITS`) — is the whole posture, per `verifier-philosophy`.
 reels <command> [options] [--json]
   capture      Record a screen/window shot → media + capture.json.
                  --out <dir> --name <label> --region <WxH+X+Y|monitor:N|window>
-                 --fps --audio --mic --duration --codec --dry-run
+                 --fps --duration --codec --dry-run
   verify <dir>      Contract one against an existing capture.
   edit              Author a Reel Document from captures (or a small JSON/DSL).
   prove <reel.json> Contract two against an assembly.
@@ -186,20 +193,28 @@ Design rules: strong defaults, `--json` on every command, NDJSON progress on cap
 
 ## Boundaries — what this is NOT
 
-- **Not** an autosampler or audio DAW. Audio capture is pass-through for the demo; no editing of
-  audio beyond music ducking.
+- **Not** an audio recorder or DAW in phases 0/1. Audio capture, LUFS/peak measurement, and music
+  ducking are deferred until their platform sources and verification contract are explicit.
 - **Not** obs-cli / OBS. No GUI adapter is the source of truth.
 - **Not** a browser player. A PWA/editor is a *consumer* of the documents, built later, never the
   product.
 - **Not** taste. No check judges whether a reel is good — only whether it is whole and behaved
   as asked.
 
-## Done-criteria (whole project)
+## Phase 0/1 done-criteria
 
-- `reels capture / verify / edit / prove / render / list / id` all work headless, emit `--json`,
-  honor the exit taxonomy, and `verify`/`prove` return three distinct verdicts.
-- A demo capture+edit+render round-trip is verified end to end on this Omarchy/Hyprland box.
-- The docs + units in `docs/` let a fresh agent rebuild the entire thing with no other context.
+- `reels capture / verify / edit / prove / render / list / id` work headless for video-only flows,
+  emit `--json`, honor the exit taxonomy, and `verify`/`prove` return three distinct verdicts.
+- `reels verify` persists the measured recording facts and report so `verify -> edit` is a real
+  pipeline rather than two unrelated commands.
+- The recording and editing artifacts validate against their separate schemas under `schemas/`.
+- A demo capture+edit+render round-trip is verified end to end on a Python 3.12 desktop with
+  freetype-enabled ffmpeg.
+- The docs + units + agent files let a fresh agent rebuild the video-only baseline with no other
+  context.
+
+Audio is a follow-up phase with its own source-selection, measurement, and contract work; it is
+not a phase-0/1 completion criterion.
 
 ## Related
 

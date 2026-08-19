@@ -5,10 +5,10 @@ Threads the SPEC's design rules through every command: strong defaults,
 exit-code taxonomy (errors.py), and no interactive prompts. Every subcommand
 handler is ``cmd_<name>(args) -> int`` reachable from ``main``.
 
-This module owns *dispatch*: the bodies for capture / verify / edit / prove /
-render are implemented in their own modules by later units and wired in here
-via the ``_HANDLERS`` registry. Until then they stub to exit 70 (not
-implemented).
+This module owns *dispatch*: command bodies register themselves from their
+own modules via the ``_HANDLERS`` registry. The registry is loaded before
+``main`` runs so both the installed console script and ``python -m reels.cli``
+expose the same command surface.
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ _HANDLERS: dict[str, Callable[..., int]] = {}
 
 
 def register(name: str, handler: Callable[..., int]) -> None:
-    """Register a command handler (used by later units to wire in bodies)."""
+    """Register a command handler from one of the concrete command modules."""
     _HANDLERS[name] = handler
 
 
@@ -129,8 +129,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_cap.add_argument("--name", default="shot", help="capture label")
     p_cap.add_argument("--region", default="monitor:0", help="WxH+X+Y | monitor:N | window:<id>")
     p_cap.add_argument("--fps", type=int, default=30)
-    p_cap.add_argument("--audio", action="store_true", help="capture system audio")
-    p_cap.add_argument("--mic", action="store_true", help="capture microphone")
+    # Audio capture is intentionally not exposed in phase 0/1. The document
+    # fields remain reserved for a later, explicitly verified audio phase.
     p_cap.add_argument("--duration", type=float, default=None, help="seconds")
     p_cap.add_argument("--codec", default="h264")
     p_cap.add_argument("--dry-run", action="store_true")
@@ -209,13 +209,9 @@ def main(argv: Optional[list[str]] = None) -> int:
         return ExitCodes.INTERRUPTED
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
-
-
 # --------------------------------------------------------------------------
-# Real command bodies (later units) wire themselves in on import. Unimplemented
-# commands are not registered here, so they fall back to the exit-70 stub.
+# Real command bodies register themselves on import. An unimplemented command
+# still falls back to the exit-70 sentinel rather than claiming success.
 # --------------------------------------------------------------------------
 
 def _load_command_bodies() -> None:
@@ -226,3 +222,6 @@ def _load_command_bodies() -> None:
     from .contracts import verify  # noqa: F401  (verify)
 
 _load_command_bodies()
+
+if __name__ == "__main__":
+    raise SystemExit(main())
