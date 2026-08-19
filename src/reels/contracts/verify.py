@@ -266,7 +266,7 @@ def cmd_verify(args) -> int:
     from pathlib import Path as _P
 
     from ..capture_doc import load_capture as _load_capture
-    from ..errors import Exit as _Exit
+    from ..errors import Exit as _Exit, ExitCodes as _Codes
     from ..media import probe_facts as _probe_facts
 
     target = _P(args.dir)
@@ -275,7 +275,7 @@ def cmd_verify(args) -> int:
     else:
         cap_path = target
     if not cap_path.exists():
-        raise _Exit(ExitCodes.USAGE, f"no capture document found at {cap_path}")
+        raise _Exit(_Codes.USAGE, f"no capture document found at {cap_path}")
 
     capture = _load_capture(cap_path)
     if capture.file and not _P(capture.file).exists():

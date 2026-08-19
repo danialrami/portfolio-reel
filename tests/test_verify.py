@@ -190,3 +190,19 @@ def test_cmd_verify_unverifiable_missing_media(tmp_path, capsys):
     import reels.contracts.verify as v
     # media missing -> facts unavailable -> unverifiable (exit 7)
     assert cmd_verify(Args()) == ExitCodes.UNVERIFIABLE
+
+
+def test_cmd_verify_missing_doc_exits_usage_cleanly(tmp_path):
+    """No capture.json -> clean usage exit (2), never a traceback."""
+    from reels.contracts.verify import cmd_verify
+
+    class Args:
+        dir = str(tmp_path)
+        json = False
+        dry_run = False
+
+    import pytest as _pt
+    from reels.errors import Exit
+    with _pt.raises(Exit) as exc:
+        cmd_verify(Args())
+    assert exc.value.code == ExitCodes.USAGE
