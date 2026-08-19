@@ -57,8 +57,8 @@ def test_unknown_command_exits_2(capsys):
 
 
 def test_stub_commands_exit_70():
-    # verify/prove/render are still stubs until Units 04/06/07
-    for cmd in (["verify", "."], ["prove", "x.json"], ["render", "x.json"]):
+    # prove/render are still stubs until Units 06/07
+    for cmd in (["prove", "x.json"], ["render", "x.json"]):
         assert main(cmd) == ExitCodes.NOT_IMPLEMENTED, cmd
 
 
