@@ -164,6 +164,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_rd = sub.add_parser("render", help="ffmpeg render a reel.json -> output file")
     p_rd.add_argument("reel", help="path to reel.json")
     p_rd.add_argument("--out", default=None, help="output file path")
+    p_rd.add_argument("--captures", default=".", help="root dir to resolve capture media from")
     p_rd.add_argument("--dry-run", action="store_true")
     _json(p_rd)
 
@@ -219,6 +220,7 @@ if __name__ == "__main__":
 def _load_command_bodies() -> None:
     from . import capture  # noqa: F401  (capture)
     from . import edit  # noqa: F401  (edit)
+    from . import render  # noqa: F401  (render)
     from .contracts import verify  # noqa: F401  (verify)
 
 _load_command_bodies()

@@ -111,10 +111,11 @@ def cmd_edit(args) -> int:
 
     out = Path(args.out)
     save_reel(out, reel)
-    print(f"wrote {out} ({len(reel.clips)} clips)")
     if args.json:
         import reels.reel_doc as rd2
         print(rd2.to_json(reel))
+    else:
+        print(f"wrote {out} ({len(reel.clips)} clips)")
     return ExitCodes.OK
 
 
