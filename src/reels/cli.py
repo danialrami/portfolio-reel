@@ -217,6 +217,7 @@ if __name__ == "__main__":
 # --------------------------------------------------------------------------
 
 def _load_command_bodies() -> None:
-    from . import edit  # noqa: F401  (registers capture/verify/edit/prove/render handlers)
+    from . import capture  # noqa: F401  (capture)
+    from . import edit  # noqa: F401  (edit)
 
 _load_command_bodies()
